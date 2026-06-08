@@ -29,11 +29,13 @@ export function getDb(): Database.Database {
         active INTEGER NOT NULL DEFAULT 1
       );
     `);
-    // Add photo column to existing deployments that predate this migration
-    try {
-      _db.exec("ALTER TABLE visitors ADD COLUMN photo TEXT");
-    } catch {
-      // column already exists — safe to ignore
+    // Migrations — safe to run on existing databases
+    for (const sql of [
+      "ALTER TABLE visitors ADD COLUMN photo TEXT",
+      "ALTER TABLE hosts ADD COLUMN email TEXT",
+      "ALTER TABLE hosts ADD COLUMN phone TEXT",
+    ]) {
+      try { _db.exec(sql); } catch { /* column already exists */ }
     }
   }
   return _db;
