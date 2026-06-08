@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import HostManager from "./HostManager";
+import LogoutButton from "@/app/admin/LogoutButton";
 import Link from "next/link";
 
 export default function HostsAdminPage() {
@@ -19,9 +20,11 @@ export default function HostsAdminPage() {
             <h1 className="text-2xl font-bold text-gray-900">Manage Hosts</h1>
             <p className="mt-1 text-sm text-gray-500">Van Giessen Growers Inc.</p>
           </div>
-          <Link href="/" className="text-sm text-green-700 hover:underline">
-            ← Back to Sign-In
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/history" className="text-sm text-green-700 hover:underline">Visitor History</Link>
+            <Link href="/" className="text-sm text-gray-400 hover:underline">← Sign-In</Link>
+            <LogoutButton />
+          </div>
         </div>
         <HostManager hosts={hosts} />
       </div>

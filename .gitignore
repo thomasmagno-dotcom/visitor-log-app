@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# app data — kept on server, not in version control
+/visitor-photos/
+/visitors.db
+/visitors.db-shm
+/visitors.db-wal

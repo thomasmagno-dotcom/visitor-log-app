@@ -15,8 +15,6 @@ export default function Home() {
           <p className="mt-1 text-sm text-gray-500">Van Giessen Growers Inc.</p>
           <div className="mt-3 flex justify-center gap-4 text-xs">
             <a href="/log" className="text-green-700 hover:underline">Live Log</a>
-            <a href="/history" className="text-green-700 hover:underline">Full History</a>
-            <a href="/admin/hosts" className="text-gray-400 hover:underline">Manage Hosts</a>
           </div>
         </div>
         <SignInForm hosts={hosts} />

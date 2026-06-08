@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import Link from "next/link";
 import ExportBar from "./ExportBar";
+import LogoutButton from "@/app/admin/LogoutButton";
 import type { SearchParams } from "@/lib/types";
 
 type Visitor = {
@@ -69,9 +70,11 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
               )} record{visitors.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <div className="flex gap-3 text-sm">
+          <div className="flex items-center gap-3 text-sm">
             <Link href="/log" className="text-green-700 hover:underline">Live Log</Link>
+            <Link href="/admin/hosts" className="text-green-700 hover:underline">Manage Hosts</Link>
             <Link href="/" className="text-gray-400 hover:underline">← Sign-In</Link>
+            <LogoutButton />
           </div>
         </div>
 
