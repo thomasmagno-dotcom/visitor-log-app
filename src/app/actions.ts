@@ -12,9 +12,11 @@ export async function signIn(formData: FormData) {
   const company  = (formData.get("company") as string).trim();
   const purpose  = (formData.get("purpose") as string).trim();
   const host     = (formData.get("host")    as string).trim();
+  const email    = (formData.get("email")   as string).trim();
+  const phone    = (formData.get("phone")   as string).trim();
   const photoB64 = formData.get("photo") as string | null;
 
-  if (!name || !company || !purpose || !host) {
+  if (!name || !company || !purpose || !host || !email || !phone) {
     throw new Error("All fields are required.");
   }
   if (!photoB64) {
@@ -29,8 +31,8 @@ export async function signIn(formData: FormData) {
   const signedInAt = new Date().toISOString();
 
   db.prepare(
-    "INSERT INTO visitors (name, company, purpose, host, photo, signed_in_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(name, company, purpose, host, filename, signedInAt);
+    "INSERT INTO visitors (name, company, purpose, host, email, phone, photo, signed_in_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(name, company, purpose, host, email, phone, filename, signedInAt);
 
   // Look up host email and send notification (non-blocking — don't fail sign-in if email fails)
   const hostRecord = db

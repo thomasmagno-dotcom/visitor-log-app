@@ -98,6 +98,10 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
 
       <Field label="Visitor Name" name="name" placeholder="Jane Smith" required />
       <Field label="Company" name="company" placeholder="Acme Corp" required />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Email Address" name="email" type="email" placeholder="jane@example.com" required />
+        <Field label="Phone Number" name="phone" type="tel" placeholder="+1 (604) 555-0100" required />
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="purpose" className="text-sm font-medium text-gray-700">
@@ -238,11 +242,13 @@ function Field({
   name,
   placeholder,
   required,
+  type = "text",
 }: {
   label: string;
   name: string;
   placeholder: string;
   required?: boolean;
+  type?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -252,7 +258,7 @@ function Field({
       <input
         id={name}
         name={name}
-        type="text"
+        type={type}
         placeholder={placeholder}
         required={required}
         className="rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"

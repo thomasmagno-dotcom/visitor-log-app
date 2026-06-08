@@ -32,6 +32,8 @@ export function getDb(): Database.Database {
     // Migrations — safe to run on existing databases
     for (const sql of [
       "ALTER TABLE visitors ADD COLUMN photo TEXT",
+      "ALTER TABLE visitors ADD COLUMN email TEXT",
+      "ALTER TABLE visitors ADD COLUMN phone TEXT",
       "ALTER TABLE hosts ADD COLUMN email TEXT",
       "ALTER TABLE hosts ADD COLUMN phone TEXT",
     ]) {
