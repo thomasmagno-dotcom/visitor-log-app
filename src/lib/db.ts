@@ -17,7 +17,13 @@ export function getDb(): Database.Database {
         host TEXT NOT NULL,
         signed_in_at TEXT NOT NULL,
         signed_out_at TEXT
-      )
+      );
+      CREATE TABLE IF NOT EXISTS hosts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        title TEXT,
+        active INTEGER NOT NULL DEFAULT 1
+      );
     `);
   }
   return _db;

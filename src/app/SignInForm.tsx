@@ -22,14 +22,18 @@ const VISIT_PURPOSES = [
   "Other (specify below)",
 ];
 
-export default function SignInForm() {
+type Host = { id: number; name: string; title: string | null };
+
+export default function SignInForm({ hosts }: { hosts: Host[] }) {
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState("");
+  const [selectedHost, setSelectedHost] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const showCustom = selectedPurpose === "Other (specify below)";
+  const showCustomHost = selectedHost === "__other__";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,12 +45,20 @@ export default function SignInForm() {
       formData.set("purpose", selectedPurpose);
     }
     formData.delete("purpose_custom");
+    if (showCustomHost) {
+      const customHost = (formData.get("host_custom") as string).trim();
+      formData.set("host", customHost || "Other");
+    } else {
+      formData.set("host", selectedHost);
+    }
+    formData.delete("host_custom");
     setError(null);
     startTransition(async () => {
       try {
         await signIn(formData);
         formRef.current?.reset();
         setSelectedPurpose("");
+        setSelectedHost("");
         setSuccess(true);
         setTimeout(() => setSuccess(false), 4000);
       } catch (err) {
@@ -89,7 +101,48 @@ export default function SignInForm() {
         )}
       </div>
 
-      <Field label="Host" name="host" placeholder="Who are you visiting?" required />
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="host" className="text-sm font-medium text-gray-700">
+          Host
+        </label>
+        {hosts.length > 0 ? (
+          <>
+            <select
+              id="host"
+              name="host_select"
+              required
+              value={selectedHost}
+              onChange={(e) => setSelectedHost(e.target.value)}
+              className="rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20 bg-white"
+            >
+              <option value="" disabled>Select a host…</option>
+              {hosts.map((h) => (
+                <option key={h.id} value={h.name}>
+                  {h.name}{h.title ? ` — ${h.title}` : ""}
+                </option>
+              ))}
+              <option value="__other__">Other (specify below)</option>
+            </select>
+            {showCustomHost && (
+              <input
+                name="host_custom"
+                type="text"
+                placeholder="Enter host name…"
+                required
+                className="mt-1 rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
+              />
+            )}
+          </>
+        ) : (
+          <input
+            name="host_custom"
+            type="text"
+            placeholder="Who are you visiting?"
+            required
+            className="rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
+          />
+        )}
+      </div>
 
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
