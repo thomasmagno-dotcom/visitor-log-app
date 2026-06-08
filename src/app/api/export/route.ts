@@ -10,6 +10,8 @@ type Visitor = {
   company: string;
   purpose: string;
   host: string;
+  email: string | null;
+  phone: string | null;
   photo: string | null;
   signed_in_at: string;
   signed_out_at: string | null;
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
   if (format === "csv") {
     const headers = [
       "Visitor Name", "Company", "Purpose of Visit", "Host",
+      "Email", "Phone",
       "Date", "Time In", "Time Out", "Duration", "Photo Filename",
     ];
     const escape = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -72,6 +75,8 @@ export async function GET(req: NextRequest) {
           v.company,
           v.purpose,
           v.host,
+          v.email ?? "",
+          v.phone ?? "",
           fmt(v.signed_in_at, "date"),
           fmt(v.signed_in_at, "time"),
           v.signed_out_at ? fmt(v.signed_out_at, "time") : "On Site",
@@ -106,6 +111,8 @@ export async function GET(req: NextRequest) {
       { header: "Company",          key: "company", width: 20 },
       { header: "Purpose of Visit", key: "purpose", width: 36 },
       { header: "Host",             key: "host",    width: 20 },
+      { header: "Email",            key: "email",   width: 28 },
+      { header: "Phone",            key: "phone",   width: 16 },
       { header: "Date",             key: "date",    width: 14 },
       { header: "Time In",          key: "timeIn",  width: 10 },
       { header: "Time Out",         key: "timeOut", width: 10 },
@@ -129,14 +136,16 @@ export async function GET(req: NextRequest) {
       const row = ws.getRow(rowNum);
       row.height = ROW_HEIGHT;
 
-      row.getCell(2).value = v.name;
-      row.getCell(3).value = v.company;
-      row.getCell(4).value = v.purpose;
-      row.getCell(5).value = v.host;
-      row.getCell(6).value = fmt(v.signed_in_at, "date");
-      row.getCell(7).value = fmt(v.signed_in_at, "time");
-      row.getCell(8).value = v.signed_out_at ? fmt(v.signed_out_at, "time") : "On Site";
-      row.getCell(9).value = durLabel(v.signed_in_at, v.signed_out_at);
+      row.getCell(2).value  = v.name;
+      row.getCell(3).value  = v.company;
+      row.getCell(4).value  = v.purpose;
+      row.getCell(5).value  = v.host;
+      row.getCell(6).value  = v.email ?? "";
+      row.getCell(7).value  = v.phone ?? "";
+      row.getCell(8).value  = fmt(v.signed_in_at, "date");
+      row.getCell(9).value  = fmt(v.signed_in_at, "time");
+      row.getCell(10).value = v.signed_out_at ? fmt(v.signed_out_at, "time") : "On Site";
+      row.getCell(11).value = durLabel(v.signed_in_at, v.signed_out_at);
 
       row.eachCell({ includeEmpty: true }, (cell, colNum) => {
         if (colNum > PHOTO_COL) {

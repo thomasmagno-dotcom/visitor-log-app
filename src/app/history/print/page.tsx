@@ -9,6 +9,8 @@ type Visitor = {
   company: string;
   purpose: string;
   host: string;
+  email: string | null;
+  phone: string | null;
   photo: string | null;
   signed_in_at: string;
   signed_out_at: string | null;
@@ -111,6 +113,8 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
               <th>Company</th>
               <th>Purpose of Visit</th>
               <th>Host</th>
+              <th>Email</th>
+              <th>Phone</th>
               <th>Date</th>
               <th>Time In</th>
               <th>Time Out</th>
@@ -132,6 +136,8 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
                   <td>{v.company}</td>
                   <td>{v.purpose}</td>
                   <td>{v.host}</td>
+                  <td>{v.email ?? "—"}</td>
+                  <td>{v.phone ?? "—"}</td>
                   <td>{fmt(v.signed_in_at, "date")}</td>
                   <td>{fmt(v.signed_in_at, "time")}</td>
                   <td>{v.signed_out_at ? fmt(v.signed_out_at, "time") : <span className="badge">On Site</span>}</td>

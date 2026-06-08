@@ -10,6 +10,8 @@ type Visitor = {
   company: string;
   purpose: string;
   host: string;
+  email: string | null;
+  phone: string | null;
   photo: string | null;
   signed_in_at: string;
   signed_out_at: string | null;
@@ -99,6 +101,8 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                   <th className="px-4 py-3 text-left">Company</th>
                   <th className="px-4 py-3 text-left">Purpose of Visit</th>
                   <th className="px-4 py-3 text-left">Host</th>
+                  <th className="px-4 py-3 text-left">Email</th>
+                  <th className="px-4 py-3 text-left">Phone</th>
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Time In</th>
                   <th className="px-4 py-3 text-left">Time Out</th>
@@ -120,6 +124,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                       <td className="px-4 py-3 text-gray-600">{v.company}</td>
                       <td className="px-4 py-3 text-gray-600">{v.purpose}</td>
                       <td className="px-4 py-3 text-gray-600">{v.host}</td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {v.email
+                          ? <a href={`mailto:${v.email}`} className="text-blue-600 hover:underline">{v.email}</a>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {v.phone
+                          ? <a href={`tel:${v.phone}`} className="hover:underline">{v.phone}</a>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{fmt(v.signed_in_at, "date")}</td>
                       <td className="px-4 py-3 text-gray-500">{fmt(v.signed_in_at, "time")}</td>
                       <td className="px-4 py-3 text-gray-500">
