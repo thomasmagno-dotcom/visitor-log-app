@@ -60,7 +60,7 @@ export default function LogPage() {
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <AutoRefresh intervalMs={30000} />
 
-      <div className="mx-auto max-w-4xl space-y-8">
+      <div className="mx-auto max-w-7xl space-y-8">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -93,8 +93,8 @@ export default function LogPage() {
               No visitors currently on site.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full text-sm">
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <table className="w-full text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                   <tr>
                     <th className="px-4 py-3 text-left">Visitor</th>
@@ -110,10 +110,10 @@ export default function LogPage() {
                 <tbody className="divide-y divide-gray-100">
                   {onSite.map((v) => (
                     <tr key={v.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{v.name}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{v.company}</td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{v.purpose}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{v.host}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{v.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{v.company}</td>
+                      <td className="px-4 py-3 text-gray-600">{v.purpose}</td>
+                      <td className="px-4 py-3 text-gray-600">{v.host}</td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(v.signed_in_at)}</td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatTime(v.signed_in_at)}</td>
                       <td className="px-4 py-3">
@@ -139,8 +139,8 @@ export default function LogPage() {
               Recently Departed
               <span className="ml-2 text-xs font-normal text-gray-400">(last 20)</span>
             </h2>
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full text-sm">
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <table className="w-full text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                   <tr>
                     <th className="px-4 py-3 text-left">Visitor</th>
@@ -156,13 +156,13 @@ export default function LogPage() {
                 <tbody className="divide-y divide-gray-100">
                   {recentOut.map((v) => (
                     <tr key={v.id} className="text-gray-500">
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">{v.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{v.company}</td>
-                      <td className="px-4 py-3 max-w-[180px] truncate">{v.purpose}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{v.host}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(v.signed_in_at)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatTime(v.signed_in_at)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatTime(v.signed_out_at!)}</td>
+                      <td className="px-4 py-3 font-medium">{v.name}</td>
+                      <td className="px-4 py-3">{v.company}</td>
+                      <td className="px-4 py-3">{v.purpose}</td>
+                      <td className="px-4 py-3">{v.host}</td>
+                      <td className="px-4 py-3">{formatDate(v.signed_in_at)}</td>
+                      <td className="px-4 py-3">{formatTime(v.signed_in_at)}</td>
+                      <td className="px-4 py-3">{formatTime(v.signed_out_at!)}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                           {duration(v.signed_in_at, v.signed_out_at)}
