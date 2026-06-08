@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import SignInForm from "./SignInForm";
+import TabShell from "./TabShell";
 
 export default function Home() {
   const db = getDb();
@@ -10,14 +11,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-md p-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Visitor Sign-In</h1>
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Visitor Check-In</h1>
           <p className="mt-1 text-sm text-gray-500">Van Giessen Growers Inc.</p>
           <div className="mt-3 flex justify-center gap-4 text-xs">
             <a href="/log" className="text-green-700 hover:underline">Live Log</a>
           </div>
         </div>
-        <SignInForm hosts={hosts} />
+        <TabShell signInForm={<SignInForm hosts={hosts} />} />
       </div>
     </div>
   );

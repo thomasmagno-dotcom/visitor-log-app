@@ -54,3 +54,23 @@ export async function signOut(id: number) {
     .run(new Date().toISOString(), id);
   revalidatePath("/log");
 }
+
+export async function searchSignedIn(query: string) {
+  const db = getDb();
+  const like = `%${query}%`;
+  return db
+    .prepare(
+      `SELECT id, name, company, host, signed_in_at FROM visitors
+       WHERE signed_out_at IS NULL AND name LIKE ?
+       ORDER BY signed_in_at DESC LIMIT 10`
+    )
+    .all(like) as { id: number; name: string; company: string; host: string; signed_in_at: string }[];
+}
+
+export async function selfSignOut(id: number) {
+  const db = getDb();
+  db.prepare("UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL")
+    .run(new Date().toISOString(), id);
+  revalidatePath("/log");
+  revalidatePath("/");
+}
