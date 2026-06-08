@@ -3,20 +3,50 @@
 import { useRef, useState, useTransition } from "react";
 import { signIn } from "./actions";
 
+const VISIT_PURPOSES = [
+  "Audit / Inspection (Government or Regulatory)",
+  "Third-Party Food Safety Audit (SQF, BRC, FSSC 22000, etc.)",
+  "Supplier / Vendor Visit",
+  "Raw Material Delivery",
+  "Equipment Delivery or Installation",
+  "Equipment Maintenance or Repair",
+  "Pest Control Service",
+  "Sanitation / Cleaning Service",
+  "Customer / Buyer Tour",
+  "Sales or Business Meeting",
+  "Quality Assurance / Lab Visit",
+  "Training or Educational Visit",
+  "Job Interview or HR Visit",
+  "Contractor or Construction Work",
+  "IT / Technology Support",
+  "Other (specify below)",
+];
+
 export default function SignInForm() {
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPurpose, setSelectedPurpose] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
+
+  const showCustom = selectedPurpose === "Other (specify below)";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    if (showCustom) {
+      const custom = (formData.get("purpose_custom") as string).trim();
+      formData.set("purpose", custom || "Other");
+    } else {
+      formData.set("purpose", selectedPurpose);
+    }
+    formData.delete("purpose_custom");
     setError(null);
     startTransition(async () => {
       try {
         await signIn(formData);
         formRef.current?.reset();
+        setSelectedPurpose("");
         setSuccess(true);
         setTimeout(() => setSuccess(false), 4000);
       } catch (err) {
@@ -29,7 +59,36 @@ export default function SignInForm() {
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       <Field label="Visitor Name" name="name" placeholder="Jane Smith" required />
       <Field label="Company" name="company" placeholder="Acme Corp" required />
-      <Field label="Purpose of Visit" name="purpose" placeholder="Meeting, delivery, tour…" required />
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="purpose" className="text-sm font-medium text-gray-700">
+          Purpose of Visit
+        </label>
+        <select
+          id="purpose"
+          name="purpose_select"
+          required
+          value={selectedPurpose}
+          onChange={(e) => setSelectedPurpose(e.target.value)}
+          className="rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20 bg-white"
+        >
+          <option value="" disabled>Select a purpose…</option>
+          {VISIT_PURPOSES.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        {showCustom && (
+          <input
+            id="purpose_custom"
+            name="purpose_custom"
+            type="text"
+            placeholder="Describe your purpose…"
+            required
+            className="mt-1 rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 shadow-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
+          />
+        )}
+      </div>
+
       <Field label="Host" name="host" placeholder="Who are you visiting?" required />
 
       {error && (
