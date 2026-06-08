@@ -28,21 +28,23 @@ type Host = { id: number; name: string; title: string | null };
 
 export default function SignInForm({ hosts }: { hosts: Host[] }) {
   const [isPending, startTransition] = useTransition();
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState("");
   const [selectedHost, setSelectedHost] = useState("");
   const [gmpAcked, setGmpAcked] = useState(false);
   const [cdAcked, setCdAcked] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ visitorName: string; host: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const showCustom = selectedPurpose === "Other (specify below)";
   const showCustomHost = selectedHost === "__other__";
   const allAcknowledged = gmpAcked && cdAcked;
+  const success = successInfo !== null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const visitorName = (formData.get("name") as string).trim();
     if (showCustom) {
       const custom = (formData.get("purpose_custom") as string).trim();
       formData.set("purpose", custom || "Other");
@@ -50,11 +52,13 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
       formData.set("purpose", selectedPurpose);
     }
     formData.delete("purpose_custom");
+    let resolvedHost: string;
     if (showCustomHost) {
-      const customHost = (formData.get("host_custom") as string).trim();
-      formData.set("host", customHost || "Other");
+      resolvedHost = (formData.get("host_custom") as string).trim() || "Other";
+      formData.set("host", resolvedHost);
     } else {
-      formData.set("host", selectedHost);
+      resolvedHost = selectedHost;
+      formData.set("host", resolvedHost);
     }
     formData.delete("host_custom");
     setError(null);
@@ -66,8 +70,8 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
         setSelectedHost("");
         setGmpAcked(false);
         setCdAcked(false);
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 4000);
+        setSuccessInfo({ visitorName, host: resolvedHost });
+        setTimeout(() => setSuccessInfo(null), 8000);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
       }
@@ -181,10 +185,20 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
           {error}
         </p>
       )}
-      {success && (
-        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-          Welcome! You have been signed in successfully.
-        </p>
+      {success && successInfo && (
+        <div className="rounded-xl border border-green-300 bg-green-50 px-5 py-4 flex gap-3 items-start">
+          <svg className="mt-0.5 h-5 w-5 shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-green-800">
+              Welcome, {successInfo.visitorName}! You have been successfully signed in.
+            </p>
+            <p className="mt-0.5 text-sm text-green-700">
+              <strong>{successInfo.host}</strong> has been notified of your arrival. Please wait in the reception area.
+            </p>
+          </div>
+        </div>
       )}
 
       <button
