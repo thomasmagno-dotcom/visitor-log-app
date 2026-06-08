@@ -1,5 +1,7 @@
-import { getDb } from "@/lib/db";
+import { getDb, PHOTOS_DIR } from "@/lib/db";
 import type { SearchParams } from "@/lib/types";
+import path from "path";
+import fs from "fs";
 
 type Visitor = {
   id: number;
@@ -7,6 +9,7 @@ type Visitor = {
   company: string;
   purpose: string;
   host: string;
+  photo: string | null;
   signed_in_at: string;
   signed_out_at: string | null;
 };
@@ -24,6 +27,15 @@ function dur(signedIn: string, signedOut: string | null) {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Read photo from disk and encode as base64 data URI so it prints without needing the server
+function photoDataUri(filename: string | null): string | null {
+  if (!filename) return null;
+  const filePath = path.join(PHOTOS_DIR, path.basename(filename));
+  if (!fs.existsSync(filePath)) return null;
+  const buf = fs.readFileSync(filePath);
+  return `data:image/jpeg;base64,${buf.toString("base64")}`;
 }
 
 export default async function PrintPage({ searchParams }: { searchParams: SearchParams }) {
@@ -61,16 +73,23 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
           body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 24px; }
           h1 { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
           .sub { font-size: 11px; color: #555; margin-bottom: 16px; }
+          .print-btn { margin-bottom: 16px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
           table { width: 100%; border-collapse: collapse; }
           th { background: #f0f0f0; text-align: left; padding: 6px 8px; font-size: 10px;
                text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #ccc; }
-          td { padding: 5px 8px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
+          td { padding: 5px 8px; border-bottom: 1px solid #e5e5e5; vertical-align: middle; }
+          td.photo-cell { width: 52px; padding: 4px 6px; }
+          td.photo-cell img { width: 44px; height: 44px; object-fit: cover;
+                              border-radius: 4px; border: 1px solid #ddd; display: block; }
+          td.photo-cell .no-photo { width: 44px; height: 44px; background: #f0f0f0;
+                                    border-radius: 4px; display: flex; align-items: center;
+                                    justify-content: center; font-size: 9px; color: #aaa; }
           tr:last-child td { border-bottom: none; }
           .badge { display:inline-block; padding: 1px 6px; border-radius: 9px;
                    background:#e8f5e9; color:#2e7d32; font-size:10px; }
           @media print {
             body { padding: 0; }
-            button { display: none; }
+            .print-btn { display: none; }
           }
         `}</style>
       </head>
@@ -78,18 +97,16 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
         <h1>Visitor Log — Van Giessen Growers Inc.</h1>
         <p className="sub">
           Printed: {printed} &nbsp;·&nbsp; {visitors.length} record{visitors.length !== 1 ? "s" : ""}
-          {from || to ? ` · ${from ?? ""}${from && to ? " – " : ""}${to ?? ""}` : " · All dates"}
+          {(from || to) ? ` · ${from ?? ""}${from && to ? " – " : ""}${to ?? ""}` : " · All dates"}
         </p>
-        <button
-          onClick="window.print()"
-          style={{ marginBottom: 16, padding: "6px 14px", cursor: "pointer", fontSize: 12 }}
-        >
+        <button className="print-btn" onClick="window.print()">
           Print / Save as PDF
         </button>
         <table>
           <thead>
             <tr>
-              <th>#</th>
+              <th style={{ width: 30 }}>#</th>
+              <th style={{ width: 52 }}>Photo</th>
               <th>Visitor Name</th>
               <th>Company</th>
               <th>Purpose of Visit</th>
@@ -101,25 +118,33 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
             </tr>
           </thead>
           <tbody>
-            {visitors.map((v, i) => (
-              <tr key={v.id}>
-                <td style={{ color: "#999" }}>{visitors.length - i}</td>
-                <td><strong>{v.name}</strong></td>
-                <td>{v.company}</td>
-                <td>{v.purpose}</td>
-                <td>{v.host}</td>
-                <td>{fmt(v.signed_in_at, "date")}</td>
-                <td>{fmt(v.signed_in_at, "time")}</td>
-                <td>{v.signed_out_at ? fmt(v.signed_out_at, "time") : <span className="badge">On Site</span>}</td>
-                <td>{dur(v.signed_in_at, v.signed_out_at)}</td>
-              </tr>
-            ))}
+            {visitors.map((v, i) => {
+              const uri = photoDataUri(v.photo);
+              return (
+                <tr key={v.id}>
+                  <td style={{ color: "#999" }}>{visitors.length - i}</td>
+                  <td className="photo-cell">
+                    {uri
+                      ? <img src={uri} alt={v.name} />
+                      : <div className="no-photo">N/A</div>}
+                  </td>
+                  <td><strong>{v.name}</strong></td>
+                  <td>{v.company}</td>
+                  <td>{v.purpose}</td>
+                  <td>{v.host}</td>
+                  <td>{fmt(v.signed_in_at, "date")}</td>
+                  <td>{fmt(v.signed_in_at, "time")}</td>
+                  <td>{v.signed_out_at ? fmt(v.signed_out_at, "time") : <span className="badge">On Site</span>}</td>
+                  <td>{dur(v.signed_in_at, v.signed_out_at)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {visitors.length === 0 && (
           <p style={{ marginTop: 24, textAlign: "center", color: "#888" }}>No records found.</p>
         )}
-        <script dangerouslySetInnerHTML={{ __html: "document.querySelector('button').addEventListener('click',()=>window.print())" }} />
+        <script dangerouslySetInnerHTML={{ __html: "document.querySelector('.print-btn').addEventListener('click',()=>window.print())" }} />
       </body>
     </html>
   );
