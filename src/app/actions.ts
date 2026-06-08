@@ -19,4 +19,12 @@ export async function signIn(formData: FormData) {
   ).run(name, company, purpose, host, new Date().toISOString());
 
   revalidatePath("/");
+  revalidatePath("/log");
+}
+
+export async function signOut(id: number) {
+  const db = getDb();
+  db.prepare("UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL")
+    .run(new Date().toISOString(), id);
+  revalidatePath("/log");
 }
