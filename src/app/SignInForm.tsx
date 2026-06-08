@@ -2,6 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { signIn } from "./actions";
+import PolicyAcknowledgment from "./PolicyAcknowledgment";
+import { GMP_POLICY, COMMUNICABLE_DISEASE_POLICY } from "@/lib/policies";
 
 const VISIT_PURPOSES = [
   "Audit / Inspection (Government or Regulatory)",
@@ -30,10 +32,13 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState("");
   const [selectedHost, setSelectedHost] = useState("");
+  const [gmpAcked, setGmpAcked] = useState(false);
+  const [cdAcked, setCdAcked] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const showCustom = selectedPurpose === "Other (specify below)";
   const showCustomHost = selectedHost === "__other__";
+  const allAcknowledged = gmpAcked && cdAcked;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -59,6 +64,8 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
         formRef.current?.reset();
         setSelectedPurpose("");
         setSelectedHost("");
+        setGmpAcked(false);
+        setCdAcked(false);
         setSuccess(true);
         setTimeout(() => setSuccess(false), 4000);
       } catch (err) {
@@ -144,6 +151,31 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
         )}
       </div>
 
+      {/* Policy acknowledgments */}
+      <div className="border-t border-gray-100 pt-5 space-y-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          Required Policies — Please read and acknowledge each one
+        </p>
+        <PolicyAcknowledgment
+          policy={GMP_POLICY}
+          index={0}
+          checked={gmpAcked}
+          onChange={setGmpAcked}
+        />
+        <PolicyAcknowledgment
+          policy={COMMUNICABLE_DISEASE_POLICY}
+          index={1}
+          checked={cdAcked}
+          onChange={setCdAcked}
+        />
+      </div>
+
+      {!allAcknowledged && (
+        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
+          You must read and acknowledge both policies before signing in.
+        </p>
+      )}
+
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
           {error}
@@ -157,7 +189,7 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || !allAcknowledged}
         className="w-full rounded-lg bg-green-700 px-6 py-3 text-base font-semibold text-white transition hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? "Signing in…" : "Sign In"}
