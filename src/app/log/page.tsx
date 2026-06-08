@@ -68,9 +68,10 @@ export default function LogPage() {
             <h1 className="text-2xl font-bold text-gray-900">Visitor Log</h1>
             <p className="mt-0.5 text-sm text-gray-500">Van Giessen Growers Inc. — refreshes every 30 s</p>
           </div>
-          <Link href="/" className="text-sm text-green-700 hover:underline">
-            ← Sign-In
-          </Link>
+          <div className="flex gap-4 text-sm">
+            <Link href="/history" className="text-green-700 hover:underline">Full History</Link>
+            <Link href="/" className="text-gray-400 hover:underline">← Sign-In</Link>
+          </div>
         </div>
 
         {/* Currently on site */}
