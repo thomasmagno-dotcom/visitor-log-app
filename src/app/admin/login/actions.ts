@@ -12,7 +12,7 @@ export async function login(formData: FormData) {
     return { error: "Incorrect password." };
   }
 
-  const token = signToken(`admin:${Date.now()}`);
+  const token = await signToken(`admin:${Date.now()}`);
   const jar = await cookies();
   jar.set(COOKIE, token, {
     httpOnly: true,

@@ -3,7 +3,7 @@ import { verifyToken, COOKIE } from "@/lib/session";
 
 const PROTECTED = ["/history", "/admin"];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
@@ -12,7 +12,7 @@ export function middleware(req: NextRequest) {
   if (!isProtected || isLoginPage) return NextResponse.next();
 
   const token = req.cookies.get(COOKIE)?.value ?? "";
-  if (verifyToken(token)) return NextResponse.next();
+  if (await verifyToken(token)) return NextResponse.next();
 
   const loginUrl = req.nextUrl.clone();
   loginUrl.pathname = "/admin/login";

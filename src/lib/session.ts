@@ -1,27 +1,42 @@
-import { createHmac } from "crypto";
+// Uses only Web Crypto (crypto.subtle) — compatible with Next.js Edge runtime
 
-const SECRET = process.env.SESSION_SECRET ?? "fallback-dev-secret-change-me";
 const COOKIE = "vg_admin_session";
 const MAX_AGE = 60 * 60 * 8; // 8 hours
 
 export { COOKIE, MAX_AGE };
 
-export function signToken(payload: string): string {
-  const sig = createHmac("sha256", SECRET).update(payload).digest("hex");
-  return `${payload}.${sig}`;
+async function getKey(): Promise<CryptoKey> {
+  const secret = process.env.SESSION_SECRET ?? "fallback-dev-secret-change-me";
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"]
+  );
 }
 
-export function verifyToken(token: string): boolean {
+export async function signToken(payload: string): Promise<string> {
+  const key = await getKey();
+  const enc = new TextEncoder();
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  const hex = Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${payload}.${hex}`;
+}
+
+export async function verifyToken(token: string): Promise<boolean> {
   const lastDot = token.lastIndexOf(".");
   if (lastDot === -1) return false;
   const payload = token.slice(0, lastDot);
-  const expected = createHmac("sha256", SECRET).update(payload).digest("hex");
-  const actual = token.slice(lastDot + 1);
-  // Constant-time comparison
-  if (expected.length !== actual.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
-  }
-  return diff === 0;
+  const actualHex = token.slice(lastDot + 1);
+
+  const key = await getKey();
+  const enc = new TextEncoder();
+  const sigBytes = new Uint8Array(
+    actualHex.match(/.{2}/g)?.map((h) => parseInt(h, 16)) ?? []
+  );
+  return crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(payload));
 }
