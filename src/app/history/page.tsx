@@ -9,6 +9,7 @@ type Visitor = {
   company: string;
   purpose: string;
   host: string;
+  photo: string | null;
   signed_in_at: string;
   signed_out_at: string | null;
 };
@@ -90,6 +91,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                 <tr>
                   <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Photo</th>
                   <th className="px-4 py-3 text-left">Visitor</th>
                   <th className="px-4 py-3 text-left">Company</th>
                   <th className="px-4 py-3 text-left">Purpose of Visit</th>
@@ -106,6 +108,11 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                   return (
                     <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-gray-400 text-xs">{visitors.length - i}</td>
+                      <td className="px-4 py-2">
+                        {v.photo
+                          ? <img src={`/api/photos/${v.photo}`} alt={v.name} className="h-10 w-10 rounded-full object-cover border border-gray-200" />
+                          : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">N/A</span>}
+                      </td>
                       <td className="px-4 py-3 font-medium text-gray-900">{v.name}</td>
                       <td className="px-4 py-3 text-gray-600">{v.company}</td>
                       <td className="px-4 py-3 text-gray-600">{v.purpose}</td>

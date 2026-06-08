@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { signIn } from "./actions";
 import PolicyAcknowledgment from "./PolicyAcknowledgment";
+import CameraCapture from "./CameraCapture";
 import { GMP_POLICY, COMMUNICABLE_DISEASE_POLICY } from "@/lib/policies";
 
 const VISIT_PURPOSES = [
@@ -33,6 +34,7 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
   const [selectedHost, setSelectedHost] = useState("");
   const [gmpAcked, setGmpAcked] = useState(false);
   const [cdAcked, setCdAcked] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
   const [successInfo, setSuccessInfo] = useState<{ visitorName: string; host: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -61,6 +63,7 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
       formData.set("host", resolvedHost);
     }
     formData.delete("host_custom");
+    if (photo) formData.set("photo", photo);
     setError(null);
     startTransition(async () => {
       try {
@@ -70,6 +73,7 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
         setSelectedHost("");
         setGmpAcked(false);
         setCdAcked(false);
+        setPhoto(null);
         setSuccessInfo({ visitorName, host: resolvedHost });
         setTimeout(() => setSuccessInfo(null), 8000);
       } catch (err) {
@@ -80,6 +84,18 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+      {/* Visitor photo — required */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-gray-700">
+          Visitor Photo <span className="text-red-500">*</span>
+        </label>
+        <CameraCapture
+          captured={photo}
+          onCapture={setPhoto}
+          onClear={() => setPhoto(null)}
+        />
+      </div>
+
       <Field label="Visitor Name" name="name" placeholder="Jane Smith" required />
       <Field label="Company" name="company" placeholder="Acme Corp" required />
 
@@ -174,7 +190,12 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
         />
       </div>
 
-      {!allAcknowledged && (
+      {!photo && (
+        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
+          A visitor photo is required before signing in.
+        </p>
+      )}
+      {photo && !allAcknowledged && (
         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
           You must read and acknowledge both policies before signing in.
         </p>
@@ -203,7 +224,7 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
 
       <button
         type="submit"
-        disabled={isPending || !allAcknowledged}
+        disabled={isPending || !photo || !allAcknowledged}
         className="w-full rounded-lg bg-green-700 px-6 py-3 text-base font-semibold text-white transition hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? "Signing in…" : "Sign In"}
