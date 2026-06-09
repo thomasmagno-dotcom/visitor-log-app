@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import Link from "next/link";
 import SignOutButton from "./SignOutButton";
 import AutoRefresh from "./AutoRefresh";
@@ -15,21 +15,11 @@ type Visitor = {
 };
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-CA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return new Date(iso).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
 function duration(signedIn: string, signedOut: string | null): string {
@@ -38,24 +28,35 @@ function duration(signedIn: string, signedOut: string | null): string {
   const totalMin = Math.floor(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
+  return h === 0 ? `${m}m` : `${h}h ${m}m`;
 }
 
-export default function LogPage() {
+function PhotoCell({ photo, name, faded }: { photo: string | null; name: string; faded?: boolean }) {
+  if (!photo) {
+    return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">N/A</span>;
+  }
+  return (
+    <img
+      src={photo}
+      alt={name}
+      className={`h-10 w-10 rounded-full object-cover border border-gray-200${faded ? " opacity-60" : ""}`}
+    />
+  );
+}
+
+export default async function LogPage() {
+  await initDb();
   const db = getDb();
 
-  const onSite = db
-    .prepare(
-      "SELECT * FROM visitors WHERE signed_out_at IS NULL ORDER BY signed_in_at DESC"
-    )
-    .all() as Visitor[];
+  const onSiteResult = await db.execute(
+    "SELECT * FROM visitors WHERE signed_out_at IS NULL ORDER BY signed_in_at DESC"
+  );
+  const onSite = onSiteResult.rows as unknown as Visitor[];
 
-  const recentOut = db
-    .prepare(
-      "SELECT * FROM visitors WHERE signed_out_at IS NOT NULL ORDER BY signed_out_at DESC LIMIT 20"
-    )
-    .all() as Visitor[];
+  const recentOutResult = await db.execute(
+    "SELECT * FROM visitors WHERE signed_out_at IS NOT NULL ORDER BY signed_out_at DESC LIMIT 20"
+  );
+  const recentOut = recentOutResult.rows as unknown as Visitor[];
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
@@ -69,9 +70,7 @@ export default function LogPage() {
             <h1 className="text-2xl font-bold text-gray-900">Visitor Log</h1>
             <p className="mt-0.5 text-sm text-gray-500">Van Giessen Growers Inc. — refreshes every 30 s</p>
           </div>
-          <div className="flex gap-4 text-sm">
-            <Link href="/" className="text-gray-400 hover:underline">← Sign-In</Link>
-          </div>
+          <Link href="/" className="text-sm text-gray-400 hover:underline">← Sign-In</Link>
         </div>
 
         {/* Currently on site */}
@@ -112,23 +111,19 @@ export default function LogPage() {
                 <tbody className="divide-y divide-gray-100">
                   {onSite.map((v) => (
                     <tr key={v.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2">
-                        {v.photo
-                          ? <img src={`/api/photos/${v.photo}`} alt={v.name} className="h-10 w-10 rounded-full object-cover border border-gray-200" />
-                          : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">N/A</span>}
-                      </td>
+                      <td className="px-4 py-2"><PhotoCell photo={v.photo} name={v.name} /></td>
                       <td className="px-4 py-3 font-medium text-gray-900">{v.name}</td>
                       <td className="px-4 py-3 text-gray-600">{v.company}</td>
                       <td className="px-4 py-3 text-gray-600">{v.purpose}</td>
                       <td className="px-4 py-3 text-gray-600">{v.host}</td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(v.signed_in_at)}</td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatTime(v.signed_in_at)}</td>
+                      <td className="px-4 py-3 text-gray-500">{formatDate(v.signed_in_at)}</td>
+                      <td className="px-4 py-3 text-gray-500">{formatTime(v.signed_in_at)}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                           {duration(v.signed_in_at, null)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 text-right">
                         <SignOutButton id={v.id} name={v.name} />
                       </td>
                     </tr>
@@ -164,11 +159,7 @@ export default function LogPage() {
                 <tbody className="divide-y divide-gray-100">
                   {recentOut.map((v) => (
                     <tr key={v.id} className="text-gray-500">
-                      <td className="px-4 py-2">
-                        {v.photo
-                          ? <img src={`/api/photos/${v.photo}`} alt={v.name} className="h-10 w-10 rounded-full object-cover border border-gray-200 opacity-60" />
-                          : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">N/A</span>}
-                      </td>
+                      <td className="px-4 py-2"><PhotoCell photo={v.photo} name={v.name} faded /></td>
                       <td className="px-4 py-3 font-medium">{v.name}</td>
                       <td className="px-4 py-3">{v.company}</td>
                       <td className="px-4 py-3">{v.purpose}</td>

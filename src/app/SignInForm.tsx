@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from "react";
 import { signIn } from "./actions";
 import PolicyAcknowledgment from "./PolicyAcknowledgment";
 import CameraCapture from "./CameraCapture";
-import { GMP_POLICY, COMMUNICABLE_DISEASE_POLICY } from "@/lib/policies";
 
 const VISIT_PURPOSES = [
   "Audit / Inspection (Government or Regulatory)",
@@ -26,8 +25,17 @@ const VISIT_PURPOSES = [
 ];
 
 type Host = { id: number; name: string; title: string | null };
+type PolicyProp = { id: number; title: string; version: string; effective_date: string; body: string };
 
-export default function SignInForm({ hosts }: { hosts: Host[] }) {
+export default function SignInForm({
+  hosts,
+  gmpPolicy,
+  cdPolicy,
+}: {
+  hosts: Host[];
+  gmpPolicy: PolicyProp;
+  cdPolicy: PolicyProp;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState("");
@@ -181,13 +189,13 @@ export default function SignInForm({ hosts }: { hosts: Host[] }) {
           Required Policies — Please read and acknowledge each one
         </p>
         <PolicyAcknowledgment
-          policy={GMP_POLICY}
+          policy={{ title: gmpPolicy.title, version: gmpPolicy.version, effectiveDate: gmpPolicy.effective_date, body: gmpPolicy.body }}
           index={0}
           checked={gmpAcked}
           onChange={setGmpAcked}
         />
         <PolicyAcknowledgment
-          policy={COMMUNICABLE_DISEASE_POLICY}
+          policy={{ title: cdPolicy.title, version: cdPolicy.version, effectiveDate: cdPolicy.effective_date, body: cdPolicy.body }}
           index={1}
           checked={cdAcked}
           onChange={setCdAcked}

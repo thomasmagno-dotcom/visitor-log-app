@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import Link from "next/link";
 import ExportBar from "./ExportBar";
 import LogoutButton from "@/app/admin/LogoutButton";
@@ -38,23 +38,27 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
   const to     = (sp.to     as string) || "";
   const search = (sp.search as string) || "";
 
+  await initDb();
   const db = getDb();
+
   const conditions: string[] = [];
-  const params: string[] = [];
-  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); params.push(from); }
-  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); params.push(to); }
+  const args: string[] = [];
+  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); args.push(from); }
+  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); args.push(to); }
   if (search) {
     conditions.push("(name LIKE ? OR company LIKE ? OR host LIKE ?)");
     const like = `%${search}%`;
-    params.push(like, like, like);
+    args.push(like, like, like);
   }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  const visitors = db
-    .prepare(`SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`)
-    .all(...params) as Visitor[];
+  const [visitorsResult, totalResult] = await Promise.all([
+    db.execute({ sql: `SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`, args }),
+    db.execute("SELECT COUNT(*) as n FROM visitors"),
+  ]);
 
-  const total = (db.prepare(`SELECT COUNT(*) as n FROM visitors`).get() as { n: number }).n;
+  const visitors = visitorsResult.rows as unknown as Visitor[];
+  const total = (totalResult.rows[0] as unknown as { n: number }).n;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
@@ -75,6 +79,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
           <div className="flex items-center gap-3 text-sm">
             <Link href="/log" className="text-green-700 hover:underline">Live Log</Link>
             <Link href="/admin/hosts" className="text-green-700 hover:underline">Manage Hosts</Link>
+            <Link href="/admin/policies" className="text-green-700 hover:underline">Manage Policies</Link>
             <Link href="/" className="text-gray-400 hover:underline">← Sign-In</Link>
             <LogoutButton />
           </div>
@@ -117,7 +122,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                       <td className="px-4 py-3 text-gray-400 text-xs">{visitors.length - i}</td>
                       <td className="px-4 py-2">
                         {v.photo
-                          ? <img src={`/api/photos/${v.photo}`} alt={v.name} className="h-10 w-10 rounded-full object-cover border border-gray-200" />
+                          ? <img src={v.photo} alt={v.name} className="h-10 w-10 rounded-full object-cover border border-gray-200" />
                           : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 text-xs">N/A</span>}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">{v.name}</td>

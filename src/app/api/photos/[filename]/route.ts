@@ -1,30 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { PHOTOS_DIR } from "@/lib/db";
-import path from "path";
-import fs from "fs";
+import { NextResponse } from "next/server";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ filename: string }> }
-) {
-  const { filename } = await params;
-
-  // Prevent path traversal
-  const safe = path.basename(filename);
-  if (!safe.match(/^[a-f0-9-]+\.jpg$/)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
-
-  const filePath = path.join(PHOTOS_DIR, safe);
-  if (!fs.existsSync(filePath)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
-
-  const buffer = fs.readFileSync(filePath);
-  return new NextResponse(buffer, {
-    headers: {
-      "Content-Type": "image/jpeg",
-      "Cache-Control": "private, max-age=31536000",
-    },
-  });
+// Photos are now stored in Vercel Blob and served directly via their public URL.
+// This route is kept for backward compatibility but returns 404 for old local filenames.
+export async function GET() {
+  return new NextResponse("Not found — photos are now served from Vercel Blob.", { status: 404 });
 }

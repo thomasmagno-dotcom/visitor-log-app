@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, PHOTOS_DIR } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import ExcelJS from "exceljs";
-import path from "path";
-import fs from "fs";
 
 type Visitor = {
   id: number;
@@ -32,20 +30,6 @@ function durLabel(signedIn: string, signedOut: string | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function buildQuery(from?: string, to?: string, search?: string) {
-  const conditions: string[] = [];
-  const params: string[] = [];
-  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); params.push(from); }
-  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); params.push(to); }
-  if (search) {
-    conditions.push("(name LIKE ? OR company LIKE ? OR host LIKE ?)");
-    const like = `%${search}%`;
-    params.push(like, like, like);
-  }
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  return { where, params };
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const format = searchParams.get("format") ?? "csv";
@@ -53,38 +37,41 @@ export async function GET(req: NextRequest) {
   const to     = searchParams.get("to")     ?? undefined;
   const search = searchParams.get("search") ?? undefined;
 
+  await initDb();
   const db = getDb();
-  const { where, params } = buildQuery(from, to, search);
-  const visitors = db
-    .prepare(`SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`)
-    .all(...params) as Visitor[];
+
+  const conditions: string[] = [];
+  const args: string[] = [];
+  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); args.push(from); }
+  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); args.push(to); }
+  if (search) {
+    conditions.push("(name LIKE ? OR company LIKE ? OR host LIKE ?)");
+    const like = `%${search}%`;
+    args.push(like, like, like);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const result = await db.execute({ sql: `SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`, args });
+  const visitors = result.rows as unknown as Visitor[];
 
   /* ── CSV ── */
   if (format === "csv") {
     const headers = [
       "Visitor Name", "Company", "Purpose of Visit", "Host",
-      "Email", "Phone",
-      "Date", "Time In", "Time Out", "Duration", "Photo Filename",
+      "Email", "Phone", "Date", "Time In", "Time Out", "Duration", "Photo URL",
     ];
     const escape = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [
       headers.map(escape).join(","),
       ...visitors.map((v) =>
         [
-          v.name,
-          v.company,
-          v.purpose,
-          v.host,
-          v.email ?? "",
-          v.phone ?? "",
-          fmt(v.signed_in_at, "date"),
-          fmt(v.signed_in_at, "time"),
+          v.name, v.company, v.purpose, v.host,
+          v.email ?? "", v.phone ?? "",
+          fmt(v.signed_in_at, "date"), fmt(v.signed_in_at, "time"),
           v.signed_out_at ? fmt(v.signed_out_at, "time") : "On Site",
           durLabel(v.signed_in_at, v.signed_out_at),
           v.photo ?? "",
-        ]
-          .map(escape)
-          .join(",")
+        ].map(escape).join(",")
       ),
     ];
     return new NextResponse(lines.join("\r\n"), {
@@ -100,12 +87,11 @@ export async function GET(req: NextRequest) {
     const wb = new ExcelJS.Workbook();
     wb.creator = "Van Giessen Growers Inc.";
     wb.created = new Date();
-
     const ws = wb.addWorksheet("Visitor Log");
-
-    const ROW_HEIGHT = 55; // px → pt approx
+    const ROW_HEIGHT = 55;
     const PHOTO_COL  = 1;
-    const COLS = [
+
+    ws.columns = [
       { header: "Photo",            key: "photo",   width: 10 },
       { header: "Visitor Name",     key: "name",    width: 22 },
       { header: "Company",          key: "company", width: 20 },
@@ -118,9 +104,7 @@ export async function GET(req: NextRequest) {
       { header: "Time Out",         key: "timeOut", width: 10 },
       { header: "Duration",         key: "dur",     width: 10 },
     ];
-    ws.columns = COLS;
 
-    // Header row styling
     const headerRow = ws.getRow(1);
     headerRow.height = 20;
     headerRow.eachCell((cell) => {
@@ -129,7 +113,6 @@ export async function GET(req: NextRequest) {
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    // Data rows
     for (let i = 0; i < visitors.length; i++) {
       const v = visitors[i];
       const rowNum = i + 2;
@@ -153,27 +136,26 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      // Embed photo image
-      if (v.photo) {
-        const photoPath = path.join(PHOTOS_DIR, v.photo);
-        if (fs.existsSync(photoPath)) {
-          const imageId = wb.addImage({
-            filename: photoPath,
-            extension: "jpeg",
-          });
-          // Place image inside the photo cell with a small margin
-          ws.addImage(imageId, {
-            tl: { col: PHOTO_COL - 1 + 0.1, row: rowNum - 1 + 0.1 },
-            br: { col: PHOTO_COL + 0.9,      row: rowNum + 0.9 },
-          });
-        }
+      // Fetch photo from Blob URL and embed in Excel
+      if (v.photo && v.photo.startsWith("http")) {
+        try {
+          const res = await fetch(v.photo);
+          if (res.ok) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const imageId = wb.addImage({ buffer: (await res.arrayBuffer()) as any, extension: "jpeg" });
+            ws.addImage(imageId, {
+              tl: { col: PHOTO_COL - 1 + 0.1, row: rowNum - 1 + 0.1 } as never,
+              br: { col: PHOTO_COL + 0.9, row: rowNum + 0.9 } as never,
+            });
+          }
+        } catch { /* skip photo on fetch error */ }
       }
 
       row.commit();
     }
 
-    const buf = await wb.xlsx.writeBuffer();
-    return new NextResponse(buf as Buffer, {
+    const buf = Buffer.from(await wb.xlsx.writeBuffer());
+    return new NextResponse(buf, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="visitor-log-${Date.now()}.xlsx"`,

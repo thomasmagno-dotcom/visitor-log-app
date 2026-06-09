@@ -1,11 +1,10 @@
 "use server";
 
-import { getDb, PHOTOS_DIR } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import { sendVisitorNotification } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
-import path from "path";
+import { put } from "@vercel/blob";
 
 export async function signIn(formData: FormData) {
   const name     = (formData.get("name")    as string).trim();
@@ -23,21 +22,30 @@ export async function signIn(formData: FormData) {
     throw new Error("A visitor photo is required.");
   }
 
+  // Upload photo to Vercel Blob
   const base64Data = photoB64.replace(/^data:image\/\w+;base64,/, "");
-  const filename = `${uuidv4()}.jpg`;
-  fs.writeFileSync(path.join(PHOTOS_DIR, filename), Buffer.from(base64Data, "base64"));
+  const buffer = Buffer.from(base64Data, "base64");
+  const filename = `visitor-photos/${uuidv4()}.jpg`;
+  const blob = await put(filename, buffer, {
+    access: "public",
+    contentType: "image/jpeg",
+  });
 
+  await initDb();
   const db = getDb();
   const signedInAt = new Date().toISOString();
 
-  db.prepare(
-    "INSERT INTO visitors (name, company, purpose, host, email, phone, photo, signed_in_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(name, company, purpose, host, email, phone, filename, signedInAt);
+  await db.execute({
+    sql: "INSERT INTO visitors (name, company, purpose, host, email, phone, photo, signed_in_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [name, company, purpose, host, email, phone, blob.url, signedInAt],
+  });
 
-  // Look up host email and send notification (non-blocking — don't fail sign-in if email fails)
-  const hostRecord = db
-    .prepare("SELECT name, email FROM hosts WHERE name = ? AND active = 1")
-    .get(host) as { name: string; email: string | null } | undefined;
+  // Look up host and send notification (non-blocking)
+  const hostResult = await db.execute({
+    sql: "SELECT name, email FROM hosts WHERE name = ? AND active = 1",
+    args: [host],
+  });
+  const hostRecord = hostResult.rows[0] as unknown as { name: string; email: string | null } | undefined;
 
   if (hostRecord?.email) {
     sendVisitorNotification(
@@ -51,28 +59,35 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signOut(id: number) {
+  await initDb();
   const db = getDb();
-  db.prepare("UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL")
-    .run(new Date().toISOString(), id);
+  await db.execute({
+    sql: "UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL",
+    args: [new Date().toISOString(), id],
+  });
   revalidatePath("/log");
 }
 
 export async function searchSignedIn(query: string) {
+  await initDb();
   const db = getDb();
   const like = `%${query}%`;
-  return db
-    .prepare(
-      `SELECT id, name, company, host, signed_in_at FROM visitors
-       WHERE signed_out_at IS NULL AND name LIKE ?
-       ORDER BY signed_in_at DESC LIMIT 10`
-    )
-    .all(like) as { id: number; name: string; company: string; host: string; signed_in_at: string }[];
+  const result = await db.execute({
+    sql: `SELECT id, name, company, host, signed_in_at FROM visitors
+          WHERE signed_out_at IS NULL AND name LIKE ?
+          ORDER BY signed_in_at DESC LIMIT 10`,
+    args: [like],
+  });
+  return result.rows as unknown as { id: number; name: string; company: string; host: string; signed_in_at: string }[];
 }
 
 export async function selfSignOut(id: number) {
+  await initDb();
   const db = getDb();
-  db.prepare("UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL")
-    .run(new Date().toISOString(), id);
+  await db.execute({
+    sql: "UPDATE visitors SET signed_out_at = ? WHERE id = ? AND signed_out_at IS NULL",
+    args: [new Date().toISOString(), id],
+  });
   revalidatePath("/log");
   revalidatePath("/");
 }

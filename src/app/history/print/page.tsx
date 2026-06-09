@@ -1,7 +1,5 @@
-import { getDb, PHOTOS_DIR } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import type { SearchParams } from "@/lib/types";
-import path from "path";
-import fs from "fs";
 
 type Visitor = {
   id: number;
@@ -31,35 +29,30 @@ function dur(signedIn: string, signedOut: string | null) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// Read photo from disk and encode as base64 data URI so it prints without needing the server
-function photoDataUri(filename: string | null): string | null {
-  if (!filename) return null;
-  const filePath = path.join(PHOTOS_DIR, path.basename(filename));
-  if (!fs.existsSync(filePath)) return null;
-  const buf = fs.readFileSync(filePath);
-  return `data:image/jpeg;base64,${buf.toString("base64")}`;
-}
-
 export default async function PrintPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const from   = (sp.from   as string) || undefined;
   const to     = (sp.to     as string) || undefined;
   const search = (sp.search as string) || undefined;
 
+  await initDb();
   const db = getDb();
+
   const conditions: string[] = [];
-  const params: string[] = [];
-  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); params.push(from); }
-  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); params.push(to); }
+  const args: string[] = [];
+  if (from)   { conditions.push("DATE(signed_in_at) >= ?"); args.push(from); }
+  if (to)     { conditions.push("DATE(signed_in_at) <= ?"); args.push(to); }
   if (search) {
     conditions.push("(name LIKE ? OR company LIKE ? OR host LIKE ?)");
     const like = `%${search}%`;
-    params.push(like, like, like);
+    args.push(like, like, like);
   }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const visitors = db
-    .prepare(`SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`)
-    .all(...params) as Visitor[];
+  const result = await db.execute({
+    sql: `SELECT * FROM visitors ${where} ORDER BY signed_in_at DESC`,
+    args,
+  });
+  const visitors = result.rows as unknown as Visitor[];
 
   const printed = new Date().toLocaleString("en-CA", {
     year: "numeric", month: "long", day: "numeric",
@@ -101,7 +94,7 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
           Printed: {printed} &nbsp;·&nbsp; {visitors.length} record{visitors.length !== 1 ? "s" : ""}
           {(from || to) ? ` · ${from ?? ""}${from && to ? " – " : ""}${to ?? ""}` : " · All dates"}
         </p>
-        <button className="print-btn" onClick="window.print()">
+        <button className="print-btn" onClick={() => window.print()}>
           Print / Save as PDF
         </button>
         <table>
@@ -122,35 +115,31 @@ export default async function PrintPage({ searchParams }: { searchParams: Search
             </tr>
           </thead>
           <tbody>
-            {visitors.map((v, i) => {
-              const uri = photoDataUri(v.photo);
-              return (
-                <tr key={v.id}>
-                  <td style={{ color: "#999" }}>{visitors.length - i}</td>
-                  <td className="photo-cell">
-                    {uri
-                      ? <img src={uri} alt={v.name} />
-                      : <div className="no-photo">N/A</div>}
-                  </td>
-                  <td><strong>{v.name}</strong></td>
-                  <td>{v.company}</td>
-                  <td>{v.purpose}</td>
-                  <td>{v.host}</td>
-                  <td>{v.email ?? "—"}</td>
-                  <td>{v.phone ?? "—"}</td>
-                  <td>{fmt(v.signed_in_at, "date")}</td>
-                  <td>{fmt(v.signed_in_at, "time")}</td>
-                  <td>{v.signed_out_at ? fmt(v.signed_out_at, "time") : <span className="badge">On Site</span>}</td>
-                  <td>{dur(v.signed_in_at, v.signed_out_at)}</td>
-                </tr>
-              );
-            })}
+            {visitors.map((v, i) => (
+              <tr key={v.id}>
+                <td style={{ color: "#999" }}>{visitors.length - i}</td>
+                <td className="photo-cell">
+                  {v.photo
+                    ? <img src={v.photo} alt={v.name} />
+                    : <div className="no-photo">N/A</div>}
+                </td>
+                <td><strong>{v.name}</strong></td>
+                <td>{v.company}</td>
+                <td>{v.purpose}</td>
+                <td>{v.host}</td>
+                <td>{v.email ?? "—"}</td>
+                <td>{v.phone ?? "—"}</td>
+                <td>{fmt(v.signed_in_at, "date")}</td>
+                <td>{fmt(v.signed_in_at, "time")}</td>
+                <td>{v.signed_out_at ? fmt(v.signed_out_at, "time") : <span className="badge">On Site</span>}</td>
+                <td>{dur(v.signed_in_at, v.signed_out_at)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
         {visitors.length === 0 && (
           <p style={{ marginTop: 24, textAlign: "center", color: "#888" }}>No records found.</p>
         )}
-        <script dangerouslySetInnerHTML={{ __html: "document.querySelector('.print-btn').addEventListener('click',()=>window.print())" }} />
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 export const GMP_POLICY = {
+  key: "gmp",
   title: "Visitor Good Manufacturing Practices (GMP) & Food Safety Policy",
   version: "1.0",
   effectiveDate: "2025-01-01",
@@ -163,6 +164,7 @@ By acknowledging this policy, you confirm that you have read, understood, and ag
 };
 
 export const COMMUNICABLE_DISEASE_POLICY = {
+  key: "communicable_disease",
   title: "Visitor Communicable Disease & Health Screening Policy",
   version: "1.0",
   effectiveDate: "2025-01-01",
