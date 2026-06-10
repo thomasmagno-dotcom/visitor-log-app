@@ -16,7 +16,7 @@ export default async function HostsAdminPage() {
     active: number;
   }[];
 
-  const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
+  const smtpConfigured = !!process.env.RESEND_API_KEY;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12">
@@ -43,7 +43,7 @@ export default async function HostsAdminPage() {
         ) : (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 space-y-1">
             <p className="font-semibold">⚠️ Email notifications are not configured.</p>
-            <p>Set <code className="bg-amber-100 px-1 rounded">SMTP_HOST</code>, <code className="bg-amber-100 px-1 rounded">SMTP_USER</code>, and <code className="bg-amber-100 px-1 rounded">SMTP_PASS</code> in your Vercel environment variables to enable host email alerts.</p>
+            <p>Set <code className="bg-amber-100 px-1 rounded">RESEND_API_KEY</code> in your Vercel environment variables to enable host email alerts.</p>
           </div>
         )}
 

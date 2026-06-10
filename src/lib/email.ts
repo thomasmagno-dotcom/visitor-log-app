@@ -1,16 +1,6 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-function createTransport() {
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+const FROM_ADDRESS = "Van Giessen Growers Inc. <visitors@vangiessen.ca>";
 
 type VisitorInfo = {
   name: string;
@@ -25,12 +15,13 @@ type HostInfo = {
 };
 
 export async function sendVisitorNotification(host: HostInfo, visitor: VisitorInfo) {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    console.warn("[email] SMTP not configured — skipping notification.");
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("[email] RESEND_API_KEY not set — skipping notification.");
     return;
   }
 
-  const transport = createTransport();
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
   const time = new Date(visitor.signedInAt).toLocaleTimeString("en-CA", {
     hour: "2-digit", minute: "2-digit", hour12: true,
   });
@@ -38,8 +29,8 @@ export async function sendVisitorNotification(host: HostInfo, visitor: VisitorIn
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  await transport.sendMail({
-    from: `"Van Giessen Growers Inc." <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
     to: host.email,
     subject: `Visitor Arrival: ${visitor.name} is here to see you`,
     text: [
@@ -81,41 +72,27 @@ export async function sendVisitorNotification(host: HostInfo, visitor: VisitorIn
         <tr>
           <td style="padding:10px 14px;background:#f3f4f6;border-radius:6px 6px 0 0;
                      font-size:11px;font-weight:700;color:#6b7280;
-                     text-transform:uppercase;letter-spacing:.05em;">
-            Visitor
-          </td>
+                     text-transform:uppercase;letter-spacing:.05em;">Visitor</td>
           <td style="padding:10px 14px;background:#f3f4f6;border-radius:6px 6px 0 0;
-                     font-size:15px;font-weight:600;color:#111827;">
-            ${visitor.name}
-          </td>
+                     font-size:15px;font-weight:600;color:#111827;">${visitor.name}</td>
         </tr>
         <tr>
           <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;
                      font-size:11px;font-weight:700;color:#6b7280;
-                     text-transform:uppercase;letter-spacing:.05em;">
-            Company
-          </td>
+                     text-transform:uppercase;letter-spacing:.05em;">Company</td>
           <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;
-                     font-size:14px;color:#374151;">
-            ${visitor.company}
-          </td>
+                     font-size:14px;color:#374151;">${visitor.company}</td>
         </tr>
         <tr>
           <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;
                      font-size:11px;font-weight:700;color:#6b7280;
-                     text-transform:uppercase;letter-spacing:.05em;">
-            Purpose
-          </td>
+                     text-transform:uppercase;letter-spacing:.05em;">Purpose</td>
           <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6;
-                     font-size:14px;color:#374151;">
-            ${visitor.purpose}
-          </td>
+                     font-size:14px;color:#374151;">${visitor.purpose}</td>
         </tr>
         <tr>
           <td style="padding:10px 14px;font-size:11px;font-weight:700;color:#6b7280;
-                     text-transform:uppercase;letter-spacing:.05em;">
-            Arrived
-          </td>
+                     text-transform:uppercase;letter-spacing:.05em;">Arrived</td>
           <td style="padding:10px 14px;font-size:14px;color:#374151;">
             ${time} &nbsp;·&nbsp; ${date}
           </td>
@@ -130,4 +107,8 @@ export async function sendVisitorNotification(host: HostInfo, visitor: VisitorIn
 </body>
 </html>`,
   });
+
+  if (error) {
+    throw new Error(`Resend error: ${error.message}`);
+  }
 }
